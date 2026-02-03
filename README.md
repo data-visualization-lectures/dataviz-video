@@ -16,13 +16,10 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-http://localhost:3000?auth_debug
-http://localhost:3000/courses/aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa?auth_debug
-http://localhost:3000/watch/11111111-1111-4111-a111-111111111111?auth_debug
-
-http://localhost:3000/watch/c1111111-1111-4111-c111-111111111111?auth_debug
-
-
+- http://localhost:3000?auth_debug
+- http://localhost:3000/courses/aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa?auth_debug
+- http://localhost:3000/watch/11111111-1111-4111-a111-111111111111?auth_debug
+- http://localhost:3000/watch/c1111111-1111-4111-c111-111111111111?auth_debug
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
