@@ -17,7 +17,9 @@ export async function GET(
         const devUser = users?.find(u => u.email === "test_dev@dataviz.jp");
         if (devUser) {
             user = devUser as any;
-            console.log("[API Graph] Using Dev User:", user.id);
+            if (user) {
+                console.log("[API Graph] Using Dev User:", user.id);
+            }
         }
     }
 

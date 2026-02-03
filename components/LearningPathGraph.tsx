@@ -106,7 +106,7 @@ export default function LearningPathGraph({ courseId }: { courseId: string }) {
             .selectAll("g")
             .data(data.nodes)
             .join("g")
-            .call(drag(simulation));
+            .call(drag(simulation) as any);
 
         // Node Circles
         node.append("circle")
