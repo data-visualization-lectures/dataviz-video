@@ -12,150 +12,110 @@ export default async function WatchPage({
     const { id } = await params;
     const supabase = await createClient();
 
-    // 1. Fetch Current Video Details
-    const { data: video, error: videoError } = await supabase
-        .from("v_videos")
-        .select("*")
-        .eq("id", id)
-        .single();
+    // Parallel Fetching Round 1: Get Video & Auth User
+    const [videoResult, authResult] = await Promise.all([
+        supabase.from("v_videos").select("*").eq("id", id).single(),
+        supabase.auth.getUser()
+    ]);
+
+    const video = videoResult.data;
+    const videoError = videoResult.error;
+    let user = authResult.data.user;
+
+    // DEV MODE: Fallback to test user if not logged in
+    if (!user && process.env.NODE_ENV === 'development') {
+        const { data: { users } } = await supabase.auth.admin.listUsers();
+        const devUser = users?.find(u => u.email === "test_dev@dataviz.jp");
+        if (devUser) user = devUser as any;
+    }
 
     if (videoError || !video) {
         console.error("Error fetching video:", videoError);
         return notFound();
     }
 
-    // 2. Identify Course context
-    // Find which course this video belongs to (via v_course_nodes)
+    // 2. Identify Course context & details
+    // Find which course this video belongs to
     const { data: nodeData } = await supabase
         .from("v_course_nodes")
         .select("course_id")
         .eq("video_id", id)
         .single();
 
-    // If not part of a course, treat as standalone (should ideally not happen in this app)
     const courseId = nodeData?.course_id;
-
-    // 3. Fetch Course Videos & Structure
     let sidebarVideos: any[] = [];
     let courseTitle = "Course Content";
+    let userHistory: any[] = [];
+    let currentHistory = null;
+    let nextVideoId = null;
 
+    // Parallel Fetching Round 2: Course Content & History
     if (courseId) {
-        // Fetch course info
-        const { data: course } = await supabase
-            .from("v_courses")
-            .select("title")
-            .eq("id", courseId)
-            .single();
+        // We know courseId, so we can fetch title and nodes in parallel
+        const [courseResult, nodesResult] = await Promise.all([
+            supabase.from("v_courses").select("title").eq("id", courseId).single(),
+            supabase.from("v_course_nodes").select(`id, video:v_videos (id, title, duration)`).eq("course_id", courseId)
+        ]);
 
-        if (course) courseTitle = course.title;
+        if (courseResult.data) courseTitle = courseResult.data.title;
+        const nodes = nodesResult.data || [];
 
-        // Fetch all nodes in course
-        const { data: nodes } = await supabase
-            .from("v_course_nodes")
-            .select(`
-                id,
-                video:v_videos (id, title, duration)
-            `)
-            .eq("course_id", courseId);
-
-        // Fetch user history for these videos
-        // Fetch user history for these videos
-        const { data: { user } } = await supabase.auth.getUser();
-        let userHistory: any[] = [];
-        let userIdToCheck = user?.id;
-
-        // DEV MODE Bypass logic
-        // If local dev and no user, try finding test user
-        if (!userIdToCheck && process.env.NODE_ENV === 'development') {
-            const { data: { users } } = await supabase.auth.admin.listUsers();
-            const devUser = users?.find(u => u.email === "test_dev@dataviz.jp");
-            if (devUser) userIdToCheck = devUser.id;
-        }
-
-        if (userIdToCheck) {
-            const videoIds = nodes?.map((n: any) => n.video.id) || [];
+        // Fetch user history for ALL videos in this course (including current)
+        if (user) {
+            const videoIds = nodes.map((n: any) => n.video.id);
             const { data: history } = await supabase
                 .from("v_playback_history")
                 .select("video_id, is_completed, progress_seconds")
-                .eq("user_id", userIdToCheck)
+                .eq("user_id", user.id)
                 .in("video_id", videoIds);
             userHistory = history || [];
         }
 
-        // Fetch edges for locking logic
-        const nodeIds = nodes?.map((n: any) => n.id) || [];
-        const { data: edges } = await supabase
-            .from("v_node_edges")
-            .select("source_node_id, target_node_id")
-            .in("source_node_id", nodeIds);
-
-        // Calculate Status
+        // Calculate Status & Sidebar Data
         const completedVideoIds = new Set(userHistory.filter(h => h.is_completed).map(h => h.video_id));
         const progressMap: Record<string, number> = {};
         userHistory.forEach(h => { progressMap[h.video_id] = h.progress_seconds; });
 
-        // Map NodeID -> VideoID
-        const nodeToVideo: Record<string, string> = {};
-        nodes?.forEach((n: any) => { nodeToVideo[n.id] = n.video.id; });
-
-        // Build dependencies
-        sidebarVideos = nodes?.map((n: any) => {
+        sidebarVideos = nodes.map((n: any) => {
             const vid = n.video.id;
-            // Locking logic removed per user request: "Videos can be viewed in any order"
             const duration = n.video?.duration || 0;
             const progress = progressMap[vid] || 0;
-            // Fix: Clamp percentage between 0 and 100 to prevent "900%" display errors
             const rawPercent = duration > 0 ? (progress / duration) * 100 : 0;
             const percent = Math.min(100, Math.max(0, rawPercent));
-
-            // Console log for debugging
-            // console.log(`[Debug Progress] ${n.video.title}: Duration=${duration}, Progress=${progress}, Percent=${percent}%`);
 
             return {
                 id: vid,
                 title: n.video.title,
                 duration: duration,
                 isCompleted: completedVideoIds.has(vid),
-                isLocked: false, // Always unlocked
+                isLocked: false,
                 progressPercent: percent
             };
-        }) || [];
+        });
 
-        // Simple sort by ID or keep DB order? 
-        // nodes from DB come in arbitrary order unless sorted.
-        // Usually we want a topological sort or sort_order field. 
-        // For now, let's just assume we want them somewhat ordered or just use received order.
-        // If v_course_nodes has no order, we might need to rely on the graph structure or add a sort_order.
-        // Let's sort alphabetically for now as a fallback or just leave as is.
-    }
+        // Current Video History (extract from the already fetched batch)
+        const currentHistEntry = userHistory.find(h => h.video_id === id);
+        if (currentHistEntry) {
+            currentHistory = currentHistEntry;
+        }
 
-    // 4. Fetch User's Playback History for CURRENT video
-    const { data: { user } } = await supabase.auth.getUser();
-    let currentHistory = null;
-    let userIdForHistory = user?.id;
-
-    // DEV MODE Bypass
-    if (!userIdForHistory && process.env.NODE_ENV === 'development') {
-        const { data: { users } } = await supabase.auth.admin.listUsers();
-        const devUser = users?.find(u => u.email === "test_dev@dataviz.jp");
-        if (devUser) userIdForHistory = devUser.id;
-    }
-
-    if (userIdForHistory) {
-        const { data: historyData } = await supabase
-            .from("v_playback_history")
-            .select("progress_seconds, is_completed")
-            .eq("user_id", userIdForHistory)
-            .eq("video_id", id)
-            .single();
-        currentHistory = historyData;
-    }
-
-    // 5. Determine Next Video
-    const currentVideoIndex = sidebarVideos.findIndex(v => v.id === id);
-    let nextVideoId = null;
-    if (currentVideoIndex !== -1 && currentVideoIndex < sidebarVideos.length - 1) {
-        nextVideoId = sidebarVideos[currentVideoIndex + 1].id;
+        // Determine Next Video
+        const currentVideoIndex = sidebarVideos.findIndex(v => v.id === id);
+        if (currentVideoIndex !== -1 && currentVideoIndex < sidebarVideos.length - 1) {
+            nextVideoId = sidebarVideos[currentVideoIndex + 1].id;
+        }
+    } else {
+        // Fallback for standalone video (no course context)
+        // Just fetch history for this single video
+        if (user) {
+            const { data: historyData } = await supabase
+                .from("v_playback_history")
+                .select("progress_seconds, is_completed")
+                .eq("user_id", user.id)
+                .eq("video_id", id)
+                .single();
+            currentHistory = historyData;
+        }
     }
 
     return (
