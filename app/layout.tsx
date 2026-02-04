@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
+import SiteHeader from "@/components/SiteHeader";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -41,6 +42,9 @@ export default function RootLayout({
         </Script>
         <Script src="/lib/supabase.js" strategy="beforeInteractive" />
         <Script src="/lib/dataviz-auth-client.js" strategy="afterInteractive" />
+
+        <SiteHeader />
+
         {children}
       </body>
     </html>
