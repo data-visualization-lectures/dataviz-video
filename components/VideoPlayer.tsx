@@ -21,10 +21,12 @@ export default function VideoPlayer({
     video,
     initialHistory,
     nextVideoId, // New prop
+    signedToken,
 }: {
     video: Video;
     initialHistory: PlaybackHistory | null;
     nextVideoId?: string | null;
+    signedToken?: string | null; // New prop for signed URL
 }) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const streamRef = useRef<any>(null);
@@ -149,7 +151,7 @@ export default function VideoPlayer({
                     <Stream
                         controls
                         responsive
-                        src={video.cloudflare_uid}
+                        src={signedToken || video.cloudflare_uid}
                         streamRef={streamRef}
                         onTimeUpdate={handleTimeUpdate}
                         onEnded={handleEnded}

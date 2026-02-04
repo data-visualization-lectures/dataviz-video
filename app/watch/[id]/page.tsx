@@ -3,6 +3,7 @@ import VideoPlayer from "@/components/VideoPlayer";
 import CourseSidebar from "@/components/CourseSidebar";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { generateStreamToken } from "@/lib/cloudflare/stream";
 
 export default async function WatchPage({
     params,
@@ -118,6 +119,9 @@ export default async function WatchPage({
         }
     }
 
+    // 6. Generate Signed Token for Video Security
+    const signedToken = await generateStreamToken(video.cloudflare_uid);
+
     return (
         <div className="flex flex-col md:flex-row min-h-screen pt-32">
             {/* Sidebar (Desktop: Left, Mobile: Top/Hidden) */}
@@ -140,6 +144,7 @@ export default async function WatchPage({
                         video={video}
                         initialHistory={currentHistory}
                         nextVideoId={nextVideoId}
+                        signedToken={signedToken}
                     />
 
                     <div className="mt-8">
