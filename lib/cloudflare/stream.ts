@@ -1,4 +1,5 @@
 import { SignJWT } from "jose";
+import { createPrivateKey } from "crypto";
 
 export async function generateStreamToken(videoId: string) {
     const keyId = process.env.CLOUDFLARE_KEY_ID;
@@ -10,11 +11,25 @@ export async function generateStreamToken(videoId: string) {
     }
 
     try {
-        // PEM needs to be formatted correctly for importPKCS8
-        // If it's a one-line string from env, we might need to handle newlines
-        const formattedKey = keyPem.replace(/\\n/g, '\n');
+        let formattedKey = keyPem;
 
-        const privateKey = await importPKCS8(formattedKey, 'RS256');
+        // If the key doesn't start with the standard PEM header, assume it's Base64 encoded
+        if (!keyPem.includes("-----BEGIN")) {
+            try {
+                formattedKey = Buffer.from(keyPem, 'base64').toString('utf-8');
+            } catch (e) {
+                console.warn("Failed to decode base64 key, attempting to use as-is.", e);
+            }
+        }
+
+        // Handle escaped newlines
+        formattedKey = formattedKey.replace(/\\n/g, '\n');
+
+        // Use Node.js crypto to import the key (handles both PKCS#1 and PKCS#8)
+        const privateKey = createPrivateKey({
+            key: formattedKey,
+            format: 'pem',
+        });
 
         // Expire in 2 hours
         const expiration = Math.floor(Date.now() / 1000) + 2 * 60 * 60;
@@ -26,17 +41,12 @@ export async function generateStreamToken(videoId: string) {
             .setProtectedHeader({ alg: "RS256", kid: keyId })
             .setIssuedAt()
             .setExpirationTime(expiration)
-            .setNotBefore(Math.floor(Date.now() / 1000) - 60) // valid from 1 min ago
+            .setNotBefore(Math.floor(Date.now() / 1000) - 60)
             .sign(privateKey);
 
         return token;
     } catch (error) {
         console.error("Error generating stream token:", error);
-        return null;
+        return null; // Return null so we can fallback or handle error
     }
-}
-
-async function importPKCS8(pem: string, alg: string) {
-    const { importPKCS8 } = await import("jose");
-    return importPKCS8(pem, alg);
 }
