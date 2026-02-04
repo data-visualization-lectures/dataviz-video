@@ -119,9 +119,9 @@ export default async function WatchPage({
     }
 
     return (
-        <div className="flex flex-col md:flex-row min-h-screen pt-16">
+        <div className="flex flex-col md:flex-row min-h-screen pt-32">
             {/* Sidebar (Desktop: Left, Mobile: Top/Hidden) */}
-            <div className="hidden md:block h-[calc(100vh-64px)] sticky top-16 shrink-0">
+            <div className="hidden md:block h-[calc(100vh-128px)] sticky top-32 shrink-0">
                 <CourseSidebar
                     courseTitle={courseTitle}
                     videos={sidebarVideos}

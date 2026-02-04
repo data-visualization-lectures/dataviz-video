@@ -24,7 +24,7 @@ export default async function CoursePage({
     }
 
     return (
-        <div className="p-8 pt-20 max-w-6xl mx-auto">
+        <div className="p-8 pt-32 max-w-6xl mx-auto">
             <div className="mb-8">
                 <Link href="/" className="text-sm text-blue-600 hover:underline mb-2 block">
                     &larr; Back to Home

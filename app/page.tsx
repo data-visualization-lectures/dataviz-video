@@ -33,7 +33,7 @@ export default async function Home() {
   );
 
   return (
-    <div className="p-8 pt-20 max-w-7xl mx-auto">
+    <div className="p-8 pt-32 max-w-7xl mx-auto">
       {/* Courses Section */}
       <section className="mb-16">
         <h1 className="text-4xl font-extrabold mb-8 text-gray-900 dark:text-white border-b pb-4">
