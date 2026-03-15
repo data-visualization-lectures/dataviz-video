@@ -40,8 +40,8 @@ export default function RootLayout({
             gtag('config', 'G-KC67K4W9P1');
           `}
         </Script>
-        <Script src="/lib/supabase.js" strategy="beforeInteractive" />
-        <Script src="/lib/dataviz-auth-client.js" strategy="afterInteractive" />
+        <Script src="https://auth.dataviz.jp/lib/supabase.js" strategy="beforeInteractive" />
+        <Script src="https://auth.dataviz.jp/lib/dataviz-auth-client.js" strategy="afterInteractive" />
 
         <SiteHeader />
 
