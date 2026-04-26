@@ -9,7 +9,7 @@ type Node = {
     videoId: string;
     title: string;
     thumbnail: string;
-    status: "locked" | "available" | "completed";
+    status: "available" | "completed";
     x?: number;
     y?: number;
     fx?: number | null;
@@ -37,7 +37,6 @@ export default function LearningPathGraph({ courseId }: { courseId: string }) {
     const COLORS = {
         completed: "#10b981", // Emerald 500
         available: "#3b82f6", // Blue 500
-        locked: "#9ca3af",    // Gray 400
     };
 
     useEffect(() => {
@@ -112,11 +111,9 @@ export default function LearningPathGraph({ courseId }: { courseId: string }) {
         node.append("circle")
             .attr("r", 20)
             .attr("fill", (d) => COLORS[d.status])
-            .attr("cursor", (d) => d.status !== "locked" ? "pointer" : "not-allowed")
-            .on("click", (event, d) => {
-                if (d.status !== "locked") {
-                    router.push(`/watch/${d.videoId}`);
-                }
+            .attr("cursor", "pointer")
+            .on("click", (_event, d) => {
+                router.push(`/watch/${d.videoId}`);
             });
 
         // Node Labels (Title)
@@ -180,8 +177,7 @@ export default function LearningPathGraph({ courseId }: { courseId: string }) {
         <div ref={containerRef} className="w-full border rounded-lg shadow-inner bg-gray-50 dark:bg-zinc-900 overflow-hidden relative">
             <div className="absolute top-4 left-4 bg-white/80 dark:bg-black/80 p-2 rounded text-xs z-10">
                 <div className="flex items-center gap-2 mb-1"><span className="block w-3 h-3 rounded-full" style={{ background: COLORS.completed }}></span> Completed</div>
-                <div className="flex items-center gap-2 mb-1"><span className="block w-3 h-3 rounded-full" style={{ background: COLORS.available }}></span> Available</div>
-                <div className="flex items-center gap-2"><span className="block w-3 h-3 rounded-full" style={{ background: COLORS.locked }}></span> Locked</div>
+                <div className="flex items-center gap-2"><span className="block w-3 h-3 rounded-full" style={{ background: COLORS.available }}></span> Available</div>
             </div>
             <svg ref={svgRef}></svg>
         </div>

@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import VideoPlayer from "@/components/VideoPlayer";
 import CourseSidebar from "@/components/CourseSidebar";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { generateStreamToken } from "@/lib/cloudflare/stream";
 
@@ -89,7 +88,6 @@ export default async function WatchPage({
                 title: n.video.title,
                 duration: duration,
                 isCompleted: completedVideoIds.has(vid),
-                isLocked: false,
                 progressPercent: percent
             };
         });
