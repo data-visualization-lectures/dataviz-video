@@ -5,6 +5,7 @@ import { savePlaybackProgress } from "@/app/actions";
 import { Stream } from "@cloudflare/stream-react";
 import Link from "next/link";
 import { trackVideoPlay, trackVideoComplete } from "@/lib/analytics/events";
+import { Button } from "@/components/ui/button";
 
 const LOGIN_URL = "https://id.data-viz-lectures.com/auth/login";
 const PRICING_URL = "https://www.dataviz.jp/pricing/";
@@ -24,14 +25,14 @@ type PlaybackHistory = {
 export default function VideoPlayer({
     video,
     initialHistory,
-    nextVideoId, // New prop
+    nextHref,
     signedToken,
     canWatch,
     isAuthenticated,
 }: {
     video: Video;
     initialHistory: PlaybackHistory | null;
-    nextVideoId?: string | null;
+    nextHref?: string | null;
     signedToken?: string | null; // New prop for signed URL
     canWatch: boolean;
     isAuthenticated: boolean;
@@ -184,19 +185,18 @@ export default function VideoPlayer({
                 <p className="text-lg font-bold">この動画の視聴には「データの道具箱」の有効な契約が必要です</p>
                 <div className="flex flex-col sm:flex-row gap-3">
                     {!isAuthenticated && (
-                        <a
-                            href={loginHref}
-                            className="bg-blue-600 text-white font-semibold px-6 py-2 rounded-full hover:[filter:brightness(1.15)] transition-[filter]"
-                        >
-                            ログイン
-                        </a>
+                        <Button asChild size="lg">
+                            <a href={loginHref}>ログイン</a>
+                        </Button>
                     )}
-                    <a
-                        href={PRICING_URL}
-                        className="border border-white/70 text-white font-semibold px-6 py-2 rounded-full hover:bg-white/10 transition-colors"
+                    <Button
+                        asChild
+                        size="lg"
+                        variant="outline"
+                        className="bg-transparent text-white border-white/70 hover:bg-white/10 hover:text-white"
                     >
-                        プランを見る
-                    </a>
+                        <a href={PRICING_URL}>プランを見る</a>
+                    </Button>
                 </div>
                 {!isAuthenticated && (
                     <p className="text-sm text-gray-400">
@@ -271,9 +271,9 @@ export default function VideoPlayer({
                                 もう一度再生
                             </button>
 
-                            {nextVideoId && (
+                            {nextHref && (
                                 <Link
-                                    href={`/watch/${nextVideoId}`}
+                                    href={nextHref}
                                     className="bg-blue-600 hover:[filter:brightness(0.7)] dark:hover:[filter:brightness(1.3)] text-white font-bold px-8 py-2 rounded-full transition-[filter] transform hover:scale-105 flex items-center"
                                 >
                                     次のレッスン &rarr;
@@ -285,10 +285,10 @@ export default function VideoPlayer({
             </div>
 
             {/* Always visible Next link if available */}
-            {nextVideoId && (
+            {nextHref && (
                 <div className="flex justify-end">
                     <Link
-                        href={`/watch/${nextVideoId}`}
+                        href={nextHref}
                         className="text-blue-600 hover:underline text-sm font-semibold flex items-center"
                     >
                         次のレッスン &rarr;

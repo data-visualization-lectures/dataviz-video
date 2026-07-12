@@ -8,6 +8,7 @@ type CourseNodeRow = {
     video: {
         id: string;
         title: string;
+        slug: string;
         thumbnail_url: string | null;
     };
 };
@@ -18,11 +19,13 @@ type RawCourseNodeRow = {
     | {
         id: string;
         title: string;
+        slug: string;
         thumbnail_url: string | null;
     }
     | {
         id: string;
         title: string;
+        slug: string;
         thumbnail_url: string | null;
     }[]
     | null;
@@ -53,7 +56,7 @@ export async function GET(
         .from("v_course_nodes")
         .select(`
       id,
-      video:v_videos (id, title, duration, thumbnail_url)
+      video:v_videos (id, title, slug, duration, thumbnail_url)
     `)
         .eq("course_id", courseId);
 
@@ -70,6 +73,7 @@ export async function GET(
             video: {
                 id: video.id,
                 title: video.title,
+                slug: video.slug,
                 thumbnail_url: video.thumbnail_url ?? null,
             },
         };
@@ -132,6 +136,7 @@ export async function GET(
         return {
             id: n.id, // Node ID
             videoId: vid,
+            videoSlug: n.video.slug,
             title: n.video.title,
             thumbnail: n.video.thumbnail_url,
             status: isCompleted ? "completed" : "available"
