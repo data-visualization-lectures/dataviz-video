@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 type Node = {
     id: string; // Node ID
     videoId: string;
+    videoSlug: string;
     title: string;
     thumbnail: string;
     status: "available" | "completed";
@@ -26,7 +27,7 @@ type GraphData = {
     links: Link[];
 };
 
-export default function LearningPathGraph({ courseId }: { courseId: string }) {
+export default function LearningPathGraph({ courseId, courseSlug }: { courseId: string; courseSlug: string }) {
     const svgRef = useRef<SVGSVGElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const [data, setData] = useState<GraphData | null>(null);
@@ -113,7 +114,7 @@ export default function LearningPathGraph({ courseId }: { courseId: string }) {
             .attr("fill", (d) => COLORS[d.status])
             .attr("cursor", "pointer")
             .on("click", (_event, d) => {
-                router.push(`/watch/${d.videoId}`);
+                router.push(`/courses/${courseSlug}/watch/${d.videoSlug}`);
             });
 
         // Node Labels (Title)
@@ -168,7 +169,7 @@ export default function LearningPathGraph({ courseId }: { courseId: string }) {
         return () => {
             simulation.stop();
         };
-    }, [data, router]);
+    }, [data, router, courseSlug]);
 
     if (loading) return <div>学習パスを読み込み中...</div>;
     if (!data) return <div>データが見つかりませんでした</div>;

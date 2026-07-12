@@ -26,9 +26,7 @@
 ### クッキー仕様
 - **Cookie名**: `sb-dataviz-auth-token`
 - **共有範囲**: 同一ドメイン（サブドメイン間）で共有されることを想定。
-- **設定場所**:
-    - `lib/supabase/client.ts`: ブラウザ側での利用
-    - `lib/supabase/server.ts`: Next.js Server Sideでの利用（`cookies().get(...)`）
+- **設定場所**: `lib/supabase/server.ts`（Next.js Server Side）。cookie 契約（domain / sameSite / secure 等）の正本は `_app_core/_documents/セットアップ/CLIENT_INTEGRATION_GUIDE.md`。
 
 ### 開発モード (Development Mode)
 - 開発用バックドア（`test_dev@dataviz.jp` の自動なりすまし）は 2026-07 に廃止しました。
@@ -38,7 +36,7 @@
 ### 視聴権限（2026-07-12 確定）
 - 視聴可否の正本は dataviz-api（`/api/me` の `accessible_scopes`）。本リポジトリでは契約判定ロジックを複製しない。
 - `lib/entitlement/server.ts` がサーバー側で `/api/me` を呼び、`accessible_scopes` が非空（viz / prep / bundle / trial 中 / academia / admin / team のいずれか有効）なら視聴可。
-- Cloudflare Stream の署名トークンは視聴可の場合のみ発行する（`app/watch/[id]/page.tsx`）。
+- Cloudflare Stream の署名トークンは視聴可の場合のみ発行する（`app/courses/[courseSlug]/watch/[videoSlug]/page.tsx`）。
 - 視聴不可の場合もページ自体は表示し、プレイヤー部分をロックパネル（ログイン / プランを見る導線）に差し替える。
 - `/api/me` 呼び出し時に `Origin` や `x-dv-app` を送らないこと（service trial の自動開始を防ぐため）。
 
@@ -74,3 +72,13 @@
 | `SUPABASE_SERVICE_ROLE_KEY` | (任意) `v_videos.duration` の自己修復更新にのみ使用。未設定なら duration 更新をスキップ |
 
 > **重要**: サーバー側の通常クエリ（`lib/supabase/server.ts`）は必ず公開キーで実行し RLS を前提とする。service role を通常クエリに使ってはならない（2026-07 に service role フォールバックを撤去済み）。
+
+---
+
+## 5. URL 構造（2026-07-12 確定）
+
+- 正準 URL は `/courses/[courseSlug]/watch/[videoSlug]`（例: `/courses/openrefine/watch/openrefine-2-basics`）。
+- `slug` 列は `v_courses`（UNIQUE NOT NULL）と `v_videos`（UNIQUE NOT NULL）に持つ。移行 SQL は `_documents/migrations/2026-07-12_add_slugs.sql`。
+- サイドバーはコース layout（`app/courses/[courseSlug]/layout.tsx`）に分離されており、動画切り替え時は動画部分だけが再レンダリングされる。
+- 視聴権限（/api/me）はアクセストークン単位で 2 分キャッシュされる（`lib/entitlement/server.ts`）。
+- UI コンポーネントは shadcn/ui（radix ベース、`components/ui/`）を使う。
