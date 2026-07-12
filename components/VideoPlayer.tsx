@@ -5,6 +5,7 @@ import { savePlaybackProgress } from "@/app/actions";
 import { Stream } from "@cloudflare/stream-react";
 import Link from "next/link";
 import { trackVideoPlay, trackVideoComplete } from "@/lib/analytics/events";
+import { Button } from "@/components/ui/button";
 
 const LOGIN_URL = "https://id.data-viz-lectures.com/auth/login";
 const PRICING_URL = "https://www.dataviz.jp/pricing/";
@@ -24,14 +25,14 @@ type PlaybackHistory = {
 export default function VideoPlayer({
     video,
     initialHistory,
-    nextVideoId, // New prop
+    nextHref,
     signedToken,
     canWatch,
     isAuthenticated,
 }: {
     video: Video;
     initialHistory: PlaybackHistory | null;
-    nextVideoId?: string | null;
+    nextHref?: string | null;
     signedToken?: string | null; // New prop for signed URL
     canWatch: boolean;
     isAuthenticated: boolean;
@@ -167,10 +168,10 @@ export default function VideoPlayer({
     const handleError = (e: any) => {
         console.error("Video Error:", e);
         if (isCloudflareVideo) {
-            setError("Cloudflare Player Error: See console for details.");
+            setError("動画プレイヤーでエラーが発生しました。時間をおいて再読み込みしてください。");
         } else {
             const videoElement = e.target as HTMLVideoElement;
-            setError(`Playback Error: ${videoElement.error?.message || "Unknown error"} (Code: ${videoElement.error?.code})`);
+            setError(`再生エラー: ${videoElement.error?.message || "不明なエラー"} (Code: ${videoElement.error?.code})`);
         }
     };
 
@@ -184,19 +185,22 @@ export default function VideoPlayer({
                 <p className="text-lg font-bold">この動画の視聴には「データの道具箱」の有効な契約が必要です</p>
                 <div className="flex flex-col sm:flex-row gap-3">
                     {!isAuthenticated && (
-                        <a
-                            href={loginHref}
-                            className="bg-blue-600 text-white font-semibold px-6 py-2 rounded-full hover:[filter:brightness(1.15)] transition-[filter]"
+                        <Button
+                            asChild
+                            size="lg"
+                            className="bg-white text-zinc-900 hover:bg-white/85"
                         >
-                            ログイン
-                        </a>
+                            <a href={loginHref}>ログイン</a>
+                        </Button>
                     )}
-                    <a
-                        href={PRICING_URL}
-                        className="border border-white/70 text-white font-semibold px-6 py-2 rounded-full hover:bg-white/10 transition-colors"
+                    <Button
+                        asChild
+                        size="lg"
+                        variant="outline"
+                        className="bg-transparent text-white border-white/70 hover:bg-white/10 hover:text-white"
                     >
-                        プランを見る
-                    </a>
+                        <a href={PRICING_URL}>プランを見る</a>
+                    </Button>
                 </div>
                 {!isAuthenticated && (
                     <p className="text-sm text-gray-400">
@@ -211,7 +215,7 @@ export default function VideoPlayer({
         <div className="space-y-4">
             {error && (
                 <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-                    <strong className="font-bold">Error!</strong>
+                    <strong className="font-bold">エラー</strong>
                     <span className="block sm:inline"> {error}</span>
                 </div>
             )}
@@ -245,10 +249,9 @@ export default function VideoPlayer({
                 )}
 
                 {/* Next Video Overlay on End */}
-                {/* Next Video Overlay on End */}
                 {isEnded && (
                     <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center z-20 animate-fade-in text-white space-y-6">
-                        <p className="text-xl font-bold">Lesson Completed!</p>
+                        <p className="text-xl font-bold">レッスン完了！</p>
 
                         <div className="flex gap-4">
                             <button
@@ -269,15 +272,15 @@ export default function VideoPlayer({
                                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                 </svg>
-                                Replay
+                                もう一度再生
                             </button>
 
-                            {nextVideoId && (
+                            {nextHref && (
                                 <Link
-                                    href={`/watch/${nextVideoId}`}
+                                    href={nextHref}
                                     className="bg-blue-600 hover:[filter:brightness(0.7)] dark:hover:[filter:brightness(1.3)] text-white font-bold px-8 py-2 rounded-full transition-[filter] transform hover:scale-105 flex items-center"
                                 >
-                                    Next Lesson &rarr;
+                                    次のレッスン &rarr;
                                 </Link>
                             )}
                         </div>
@@ -285,24 +288,17 @@ export default function VideoPlayer({
                 )}
             </div>
 
-            <div className="bg-white dark:bg-zinc-900 p-4 rounded border flex justify-between items-center">
-                <div>
-                    <h2 className="font-bold">Playback Info</h2>
-                    <p className="text-sm text-gray-600">Current Progress: {progress.toFixed(1)}s</p>
-                </div>
-
-                {/* Always visible Next button if available */}
-                {nextVideoId && (
+            {/* Always visible Next link if available */}
+            {nextHref && (
+                <div className="flex justify-end">
                     <Link
-                        href={`/watch/${nextVideoId}`}
+                        href={nextHref}
                         className="text-blue-600 hover:underline text-sm font-semibold flex items-center"
                     >
-                        Next Lesson &rarr;
+                        次のレッスン &rarr;
                     </Link>
-                )}
-            </div>
-
-            {/* Debug Info Hidden or Collapsed by default could be here */}
+                </div>
+            )}
         </div>
     );
 }

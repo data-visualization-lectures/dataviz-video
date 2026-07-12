@@ -17,6 +17,14 @@ const ANONYMOUS: ViewerEntitlement = {
     accessibleScopes: [],
 };
 
+// 動画切り替えごとの /api/me 往復を避けるため、アクセストークン単位で短期キャッシュする。
+// トークン自体が失効すれば別キーになるため、TTL は契約状態の変化への追従時間だけを決める。
+const CACHE_TTL_MS = 2 * 60 * 1000;
+const entitlementCache = new Map<
+    string,
+    { expiresAt: number; value: ViewerEntitlement }
+>();
+
 export async function getViewerEntitlement(): Promise<ViewerEntitlement> {
     const supabase = await createClient();
     const {
@@ -25,6 +33,11 @@ export async function getViewerEntitlement(): Promise<ViewerEntitlement> {
 
     if (!session?.access_token) {
         return ANONYMOUS;
+    }
+
+    const cached = entitlementCache.get(session.access_token);
+    if (cached && cached.expiresAt > Date.now()) {
+        return cached.value;
     }
 
     try {
@@ -44,11 +57,18 @@ export async function getViewerEntitlement(): Promise<ViewerEntitlement> {
             ? me.accessible_scopes
             : [];
 
-        return {
+        const value: ViewerEntitlement = {
             userId: session.user.id,
             canWatch: scopes.length > 0,
             accessibleScopes: scopes,
         };
+
+        if (entitlementCache.size > 500) entitlementCache.clear();
+        entitlementCache.set(session.access_token, {
+            expiresAt: Date.now() + CACHE_TTL_MS,
+            value,
+        });
+        return value;
     } catch (error) {
         console.error("Failed to resolve viewer entitlement:", error);
         return { ...ANONYMOUS, userId: session.user.id };

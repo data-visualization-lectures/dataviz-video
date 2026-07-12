@@ -21,8 +21,8 @@ export default function SiteHeader() {
                     className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors"
                 >
                     <ArrowLeft className="w-4 h-4" />
-                    <span className="hidden sm:inline">Back to Courses</span>
-                    <span className="sm:hidden">Courses</span>
+                    <span className="hidden sm:inline">コース一覧へ戻る</span>
+                    <span className="sm:hidden">コース一覧</span>
                 </Link>
             </nav>
         </header>
