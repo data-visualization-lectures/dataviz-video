@@ -4,9 +4,12 @@ import { cookies } from "next/headers";
 export const createClient = async () => {
     const cookieStore = await cookies();
 
+    // 必ず公開キーで作成する（RLS 前提）。service role はここでは絶対に使わない。
+    // 旧 anon key と新 publishable key の両方の環境変数名を受け付ける。
     return createServerClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         {
             cookies: {
                 getAll() {

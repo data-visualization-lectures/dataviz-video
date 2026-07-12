@@ -3,6 +3,7 @@ import VideoPlayer from "@/components/VideoPlayer";
 import CourseSidebar from "@/components/CourseSidebar";
 import { notFound } from "next/navigation";
 import { generateStreamToken } from "@/lib/cloudflare/stream";
+import { getViewerEntitlement } from "@/lib/entitlement/server";
 
 export default async function WatchPage({
     params,
@@ -12,22 +13,14 @@ export default async function WatchPage({
     const { id } = await params;
     const supabase = await createClient();
 
-    // Parallel Fetching Round 1: Get Video & Auth User
-    const [videoResult, authResult] = await Promise.all([
+    // Parallel Fetching Round 1: Get Video & Viewer Entitlement
+    const [videoResult, entitlement] = await Promise.all([
         supabase.from("v_videos").select("*").eq("id", id).single(),
-        supabase.auth.getUser()
+        getViewerEntitlement(),
     ]);
 
     const video = videoResult.data;
     const videoError = videoResult.error;
-    let user = authResult.data.user;
-
-    // DEV MODE: Fallback to test user if not logged in
-    if (!user && process.env.NODE_ENV === 'development') {
-        const { data: { users } } = await supabase.auth.admin.listUsers();
-        const devUser = users?.find(u => u.email === "test_dev@dataviz.jp");
-        if (devUser) user = devUser as any;
-    }
 
     if (videoError || !video) {
         console.error("Error fetching video:", videoError);
@@ -61,12 +54,12 @@ export default async function WatchPage({
         const nodes = nodesResult.data || [];
 
         // Fetch user history for ALL videos in this course (including current)
-        if (user) {
+        if (entitlement.userId) {
             const videoIds = nodes.map((n: any) => n.video.id);
             const { data: history } = await supabase
                 .from("v_playback_history")
                 .select("video_id, is_completed, progress_seconds")
-                .eq("user_id", user.id)
+                .eq("user_id", entitlement.userId)
                 .in("video_id", videoIds);
             userHistory = history || [];
         }
@@ -106,19 +99,21 @@ export default async function WatchPage({
     } else {
         // Fallback for standalone video (no course context)
         // Just fetch history for this single video
-        if (user) {
+        if (entitlement.userId) {
             const { data: historyData } = await supabase
                 .from("v_playback_history")
                 .select("progress_seconds, is_completed")
-                .eq("user_id", user.id)
+                .eq("user_id", entitlement.userId)
                 .eq("video_id", id)
                 .single();
             currentHistory = historyData;
         }
     }
 
-    // 6. Generate Signed Token for Video Security
-    const signedToken = await generateStreamToken(video.cloudflare_uid);
+    // 6. Generate Signed Token — 有効な契約を持つ視聴者にのみ発行する
+    const signedToken = entitlement.canWatch
+        ? await generateStreamToken(video.cloudflare_uid)
+        : null;
 
     return (
         <div className="flex flex-col md:flex-row min-h-screen pt-32">
@@ -143,6 +138,8 @@ export default async function WatchPage({
                         initialHistory={currentHistory}
                         nextVideoId={nextVideoId}
                         signedToken={signedToken}
+                        canWatch={entitlement.canWatch}
+                        isAuthenticated={!!entitlement.userId}
                     />
 
                     <div className="mt-8">
