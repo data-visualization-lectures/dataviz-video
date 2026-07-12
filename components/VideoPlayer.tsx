@@ -185,7 +185,11 @@ export default function VideoPlayer({
                 <p className="text-lg font-bold">この動画の視聴には「データの道具箱」の有効な契約が必要です</p>
                 <div className="flex flex-col sm:flex-row gap-3">
                     {!isAuthenticated && (
-                        <Button asChild size="lg">
+                        <Button
+                            asChild
+                            size="lg"
+                            className="bg-white text-zinc-900 hover:bg-white/85"
+                        >
                             <a href={loginHref}>ログイン</a>
                         </Button>
                     )}

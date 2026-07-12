@@ -26,10 +26,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+    <html lang="ja" className={`${geistSans.variable} ${geistMono.variable}`}>
+      <body className="antialiased">
         <Analytics />
         <Script src="https://id.data-viz-lectures.com/lib/supabase.v1.js" strategy="beforeInteractive" />
         <Script src="https://id.data-viz-lectures.com/lib/dataviz-auth-client.v1.js" strategy="afterInteractive" />
