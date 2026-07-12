@@ -6,41 +6,7 @@ import { revalidatePath } from "next/cache";
 
 export async function savePlaybackProgress(videoId: string, seconds: number, is_completed: boolean, total_duration?: number) {
     const supabase = await createClient();
-    let user = (await supabase.auth.getUser()).data.user;
-
-    // DEV MODE: Authenticate as a test user automatically if on localhost
-    if (!user && process.env.NODE_ENV === 'development') {
-        const testEmail = "test_dev@dataviz.jp";
-
-        // Use Admin Client for user management operations in Dev mode
-        // We cannot use the standard client for admin.listUsers() if the user isn't an admin
-        const adminClient = createSupabaseClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY!
-        );
-
-        const { data: { users }, error: listError } = await adminClient.auth.admin.listUsers();
-        let devUser = users?.find(u => u.email === testEmail);
-
-        if (!devUser) {
-            const { data: newUser, error: createError } = await adminClient.auth.admin.createUser({
-                email: testEmail,
-                password: "password123",
-                email_confirm: true
-            });
-            if (createError) {
-                console.error("Failed to create dev user:", createError);
-                // Don't return error here, just fall through to "Not authenticated" check
-            } else {
-                devUser = newUser.user;
-            }
-        }
-
-        if (devUser) {
-            console.log("Using Dev User:", devUser.id);
-            user = devUser as any;
-        }
-    }
+    const user = (await supabase.auth.getUser()).data.user;
 
     if (!user) {
         return { error: "Not authenticated" };
@@ -48,10 +14,10 @@ export async function savePlaybackProgress(videoId: string, seconds: number, is_
 
     // 1. Update Video Duration if provided (Self-correction of DB data)
     // We use a Service Role client here because regular users don't have UPDATE permission on v_videos
-    if (total_duration && total_duration > 0) {
+    if (total_duration && total_duration > 0 && process.env.SUPABASE_SERVICE_ROLE_KEY) {
         const adminClient = createSupabaseClient(
             process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.SUPABASE_SERVICE_ROLE_KEY!
+            process.env.SUPABASE_SERVICE_ROLE_KEY
         );
 
         const { error: updateError } = await adminClient

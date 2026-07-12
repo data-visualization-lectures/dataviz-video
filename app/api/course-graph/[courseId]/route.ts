@@ -46,19 +46,7 @@ export async function GET(
     const supabase = await createClient();
 
     // 1. Get current user for progress tracking
-    let { data: { user } } = await supabase.auth.getUser();
-
-    // DEV MODE: Fallback to test user if not logged in
-    if (!user && process.env.NODE_ENV === 'development') {
-        const { data: { users } } = await supabase.auth.admin.listUsers();
-        const devUser = users?.find(u => u.email === "test_dev@dataviz.jp");
-        if (devUser) {
-            user = devUser;
-            console.log("[API Graph] Using Dev User:", user.id);
-        }
-    }
-
-    console.log(`[API Graph] User: ${user?.id || 'Anonymous'}`);
+    const { data: { user } } = await supabase.auth.getUser();
 
     // 2. Fetch Course Nodes
     const { data: nodesRaw, error: nodesError } = await supabase

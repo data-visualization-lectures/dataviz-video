@@ -4,6 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import { savePlaybackProgress } from "@/app/actions";
 import { Stream } from "@cloudflare/stream-react";
 import Link from "next/link";
+import { trackVideoPlay, trackVideoComplete } from "@/lib/analytics/events";
+
+const LOGIN_URL = "https://id.data-viz-lectures.com/auth/login";
+const PRICING_URL = "https://www.dataviz.jp/pricing/";
 
 type Video = {
     id: string;
@@ -22,17 +26,30 @@ export default function VideoPlayer({
     initialHistory,
     nextVideoId, // New prop
     signedToken,
+    canWatch,
+    isAuthenticated,
 }: {
     video: Video;
     initialHistory: PlaybackHistory | null;
     nextVideoId?: string | null;
     signedToken?: string | null; // New prop for signed URL
+    canWatch: boolean;
+    isAuthenticated: boolean;
 }) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const streamRef = useRef<any>(null);
     const [progress, setProgress] = useState(initialHistory?.progress_seconds || 0);
     const [isEnded, setIsEnded] = useState(false); // Track ended state
     const [isReady, setIsReady] = useState(false); // Track if player is ready to seek
+    const hasTrackedPlay = useRef(false);
+    const hasTrackedComplete = useRef(false);
+    const [loginHref, setLoginHref] = useState(LOGIN_URL);
+
+    useEffect(() => {
+        // redirect_to は クライアントでのみ確定できる（SSR に window が無いため）
+        const redirectTo = encodeURIComponent(window.location.href);
+        setLoginHref(`${LOGIN_URL}?redirect_to=${redirectTo}&lang=ja`);
+    }, []);
 
     // Hybrid Logic: Check if it's a real Cloudflare UID or a dummy one
     // Dummy UIDs in seed_data start with "uid_"
@@ -94,6 +111,12 @@ export default function VideoPlayer({
         }
     };
 
+    const handlePlay = () => {
+        if (hasTrackedPlay.current) return;
+        hasTrackedPlay.current = true;
+        trackVideoPlay(video.id, video.title);
+    };
+
     const handleTimeUpdate = (e?: any) => {
         let current = 0;
 
@@ -104,6 +127,19 @@ export default function VideoPlayer({
             // HTML5 Video
             if (!videoRef.current) return;
             current = videoRef.current.currentTime;
+        }
+
+        // GA4: 90% 視聴到達で video_complete（1 回のみ）
+        const totalDuration = isCloudflareVideo
+            ? streamRef.current?.duration
+            : videoRef.current?.duration;
+        if (
+            !hasTrackedComplete.current &&
+            totalDuration && totalDuration > 0 &&
+            current / totalDuration >= 0.9
+        ) {
+            hasTrackedComplete.current = true;
+            trackVideoComplete(video.id, video.title);
         }
 
         // Save locally to state
@@ -138,6 +174,39 @@ export default function VideoPlayer({
         }
     };
 
+    if (!canWatch) {
+        // 契約なし: プレイヤーの代わりにロックパネルを表示（署名トークンも発行されていない）
+        return (
+            <div className="relative w-full aspect-video bg-zinc-900 rounded-lg overflow-hidden shadow-lg flex flex-col items-center justify-center text-white text-center p-8 space-y-5">
+                <svg className="w-12 h-12 opacity-70" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                </svg>
+                <p className="text-lg font-bold">この動画の視聴には「データの道具箱」の有効な契約が必要です</p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                    {!isAuthenticated && (
+                        <a
+                            href={loginHref}
+                            className="bg-blue-600 text-white font-semibold px-6 py-2 rounded-full hover:[filter:brightness(1.15)] transition-[filter]"
+                        >
+                            ログイン
+                        </a>
+                    )}
+                    <a
+                        href={PRICING_URL}
+                        className="border border-white/70 text-white font-semibold px-6 py-2 rounded-full hover:bg-white/10 transition-colors"
+                    >
+                        プランを見る
+                    </a>
+                </div>
+                {!isAuthenticated && (
+                    <p className="text-sm text-gray-400">
+                        契約済みの方はログインすると視聴できます。
+                    </p>
+                )}
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-4">
             {error && (
@@ -153,6 +222,7 @@ export default function VideoPlayer({
                         responsive
                         src={signedToken || video.cloudflare_uid}
                         streamRef={streamRef}
+                        onPlay={handlePlay}
                         onTimeUpdate={handleTimeUpdate}
                         onEnded={handleEnded}
                         onError={handleError}
@@ -166,6 +236,7 @@ export default function VideoPlayer({
                         controls
                         className="w-full h-full"
                         poster={`https://placehold.co/600x400?text=${encodeURIComponent(video.title)}`}
+                        onPlay={handlePlay}
                         onTimeUpdate={() => handleTimeUpdate()}
                         onEnded={handleEnded}
                         onError={handleError}
