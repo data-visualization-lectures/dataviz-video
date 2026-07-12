@@ -170,14 +170,14 @@ export default function LearningPathGraph({ courseId }: { courseId: string }) {
         };
     }, [data, router]);
 
-    if (loading) return <div>Loading graph...</div>;
-    if (!data) return <div>No data found</div>;
+    if (loading) return <div>学習パスを読み込み中...</div>;
+    if (!data) return <div>データが見つかりませんでした</div>;
 
     return (
         <div ref={containerRef} className="w-full border rounded-lg shadow-inner bg-gray-50 dark:bg-zinc-900 overflow-hidden relative">
             <div className="absolute top-4 left-4 bg-white/80 dark:bg-black/80 p-2 rounded text-xs z-10">
-                <div className="flex items-center gap-2 mb-1"><span className="block w-3 h-3 rounded-full" style={{ background: COLORS.completed }}></span> Completed</div>
-                <div className="flex items-center gap-2"><span className="block w-3 h-3 rounded-full" style={{ background: COLORS.available }}></span> Available</div>
+                <div className="flex items-center gap-2 mb-1"><span className="block w-3 h-3 rounded-full" style={{ background: COLORS.completed }}></span> 完了</div>
+                <div className="flex items-center gap-2"><span className="block w-3 h-3 rounded-full" style={{ background: COLORS.available }}></span> 視聴可能</div>
             </div>
             <svg ref={svgRef}></svg>
         </div>

@@ -27,7 +27,7 @@ export default function CourseSidebar({
                     {courseTitle}
                 </h2>
                 <div className="text-xs text-gray-500 mt-1">
-                    {videos.filter(v => v.isCompleted).length} / {videos.length} completed
+                    {videos.filter(v => v.isCompleted).length} / {videos.length} 本 完了
                 </div>
             </div>
 
@@ -64,7 +64,7 @@ export default function CourseSidebar({
                                         />
                                     </div>
                                     <div className="text-xs text-gray-500 mt-1 flex justify-between">
-                                        <span>{Math.floor(video.duration / 60)} min</span>
+                                        <span>{Math.floor(video.duration / 60)}分</span>
                                         {video.progressPercent > 0 && <span className="text-[10px]">{Math.floor(video.progressPercent)}%</span>}
                                     </div>
                                 </div>

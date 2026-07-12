@@ -27,14 +27,14 @@ export default async function CoursePage({
         <div className="p-8 pt-32 max-w-6xl mx-auto">
             <div className="mb-8">
                 <Link href="/" className="text-sm text-blue-600 hover:underline mb-2 block">
-                    &larr; Back to Home
+                    &larr; コース一覧へ戻る
                 </Link>
                 <h1 className="text-3xl font-bold mb-2">{course.title}</h1>
                 <p className="text-gray-600 dark:text-gray-300">{course.description}</p>
             </div>
 
             <div className="mb-8">
-                <h2 className="text-xl font-semibold mb-4">Learning Path</h2>
+                <h2 className="text-xl font-semibold mb-4">学習パス</h2>
                 <div className="h-[600px] border rounded-lg shadow-sm">
                     <LearningPathGraph courseId={courseId} />
                 </div>
