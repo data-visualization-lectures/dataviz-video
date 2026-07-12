@@ -4,40 +4,38 @@ import { createClient } from "@/lib/supabase/server";
 export default async function Home() {
   const supabase = await createClient();
 
-  // Fetch Courses
-  const { data: courses } = await supabase
-    .from("v_courses")
-    .select("*")
-    .order("sort_order");
+  // Fetch Courses & Nodes in parallel (avoid per-course N+1 queries)
+  const [coursesResult, nodesResult] = await Promise.all([
+    supabase.from("v_courses").select("*").order("sort_order"),
+    supabase
+      .from("v_course_nodes")
+      .select("course_id, video_id, id")
+      .order("id", { ascending: true }),
+  ]);
 
-  // Enhance courses with "First Video ID" for direct linking
-  const coursesWithLink = await Promise.all(
-    (courses || []).map(async (course) => {
-      // Strategy: Find the first video in the course.
-      // Ideally this would follow the graph edges to find the root, 
-      // but for now, fetching the nodes and taking the first one (alphabetical or insertion order) is a reasonable fallback.
-      // We sort by 'id' to ensure deterministic results.
-      const { data: node } = await supabase
-        .from("v_course_nodes")
-        .select("video_id")
-        .eq("course_id", course.id)
-        .order("id", { ascending: true })
-        .limit(1)
-        .single();
+  const courses = coursesResult.data || [];
 
-      return {
-        ...course,
-        firstVideoId: node?.video_id,
-      };
-    })
-  );
+  // Strategy: Find the first video in each course.
+  // Ideally this would follow the graph edges to find the root,
+  // but taking the first node by 'id' is a deterministic fallback.
+  const firstVideoByCourse = new Map<string, string>();
+  for (const node of nodesResult.data || []) {
+    if (!firstVideoByCourse.has(node.course_id)) {
+      firstVideoByCourse.set(node.course_id, node.video_id);
+    }
+  }
+
+  const coursesWithLink = courses.map((course) => ({
+    ...course,
+    firstVideoId: firstVideoByCourse.get(course.id),
+  }));
 
   return (
     <div className="p-8 pt-32 max-w-7xl mx-auto">
       {/* Courses Section */}
       <section className="mb-16">
         <h1 className="text-4xl font-extrabold mb-8 text-gray-900 dark:text-white border-b pb-4">
-          Learning Paths
+          学習コース
         </h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {coursesWithLink.map((course) => (
@@ -60,15 +58,15 @@ export default async function Home() {
                     {course.title}
                   </h2>
                   <p className="text-gray-600 dark:text-gray-300 text-sm line-clamp-3 mb-6 flex-grow">
-                    {course.description || "Start your journey in this comprehensive course."}
+                    {course.description || "基礎から順に学べるコースです。"}
                   </p>
 
                   <div className="flex items-center justify-between mt-auto">
                     <span className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-                      Course
+                      コース
                     </span>
                     <span className="text-blue-600 font-semibold text-sm group-hover:underline flex items-center">
-                      Start Learning <span className="ml-1">&rarr;</span>
+                      学習を始める <span className="ml-1">&rarr;</span>
                     </span>
                   </div>
                 </div>

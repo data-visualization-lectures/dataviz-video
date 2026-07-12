@@ -28,16 +28,19 @@ export default async function WatchPage({
     }
 
     // 2. Identify Course context & details
-    // Find which course this video belongs to
+    // Find which course this video belongs to.
+    // 動画が複数コースに属する可能性があるため、最初の 1 件に限定する。
     const { data: nodeData } = await supabase
         .from("v_course_nodes")
         .select("course_id")
         .eq("video_id", id)
-        .single();
+        .order("id", { ascending: true })
+        .limit(1)
+        .maybeSingle();
 
     const courseId = nodeData?.course_id;
     let sidebarVideos: any[] = [];
-    let courseTitle = "Course Content";
+    let courseTitle = "コース内容";
     let userHistory: any[] = [];
     let currentHistory = null;
     let nextVideoId = null;
@@ -143,10 +146,10 @@ export default async function WatchPage({
                     />
 
                     <div className="mt-8">
-                        <h2 className="text-xl font-semibold mb-4">About this video</h2>
+                        <h2 className="text-xl font-semibold mb-4">この動画について</h2>
                         <p className="text-gray-600">
                             {/* Description would go here if we had it in schema */}
-                            Duration: {Math.floor(video.duration / 60)} min {video.duration % 60} sec
+                            再生時間: {Math.floor(video.duration / 60)}分{video.duration % 60}秒
                         </p>
                     </div>
                 </div>

@@ -1,41 +1,44 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# dataviz-video
 
-## Getting Started
+「データの道具箱」契約者向けの動画教材サイト。本番は `https://video.dataviz.jp`（Vercel、main ブランチから自動デプロイ）。
 
-First, run the development server:
+## 技術スタック
+
+- Next.js (App Router) + Tailwind CSS
+- Supabase（プラットフォーム共有インスタンス。`v_courses` / `v_videos` / `v_course_nodes` / `v_node_edges` / `v_playback_history`）
+- Cloudflare Stream（署名付き URL で配信）
+- 共通認証: `id.data-viz-lectures.com/lib/supabase.v1.js` + `dataviz-auth-client.v1.js`
+- 認可判定の正本は dataviz-api（`/api/me` の `accessible_scopes`）。`lib/entitlement/server.ts` 参照
+
+詳細仕様は [_documents/SPECIFICATION.md](./_documents/SPECIFICATION.md)、プロジェクト横断仕様は `_app_core/_documents/` を参照。
+
+## ローカル開発
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- http://localhost:3000/?auth_debug
+- http://localhost:3000/watch/c2222222-2222-4222-c222-222222222222?auth_debug
 
-- http://localhost:3000?auth_debug
-- http://localhost:3000/courses/aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa?auth_debug
-- http://localhost:3000/watch/11111111-1111-4111-a111-111111111111?auth_debug
-- http://localhost:3000/watch/c1111111-1111-4111-c111-111111111111?auth_debug
+`?auth_debug` は共通認証スクリプトの未ログインリダイレクトを抑止するデバッグパラメータ（URL にのみ付ける。env や設定値に入れない）。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+localhost では `.dataviz.jp` の cookie が届かないため、未ログイン状態（プレイヤーはロックパネル表示）になるのが正常。契約者としての再生確認は本番 `video.dataviz.jp` で行う。
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 環境変数（.env.local）
 
-## Learn More
+| 変数 | 必須 | 説明 |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | ✅ | Supabase プロジェクト URL |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | ✅ | 公開キー（新形式 `sb_publishable_...`） |
+| `CLOUDFLARE_KEY_ID` / `CLOUDFLARE_KEY_PEM` | ✅(再生に必要) | Cloudflare Stream 署名トークン発行用 |
+| `SUPABASE_SERVICE_ROLE_KEY` | 任意 | `v_videos.duration` の自己修復更新のみに使用 |
+| `NEXT_PUBLIC_API_BASE` | 任意 | dataviz-api のベース URL（既定 `https://api.dataviz.jp`） |
+| `NEXT_PUBLIC_AUTH_COOKIE_NAME` | 任意 | 既定 `sb-dataviz-auth-token` |
 
-To learn more about Next.js, take a look at the following resources:
+## ブランチ / CI / デプロイ
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- 変更は **PR 経由**（CI `ci-video` は PR トリガーのみ。typecheck + build）
+- main へのマージで Vercel が本番へ自動デプロイ
+- ビルド確認: `npx tsc --noEmit && npm run build`
