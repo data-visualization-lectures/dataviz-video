@@ -16,7 +16,10 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "DataViz.jp ビデオ (Beta)",
+  title: {
+    default: "DataViz.jp ビデオ (Beta)",
+    template: "%s | DataViz.jp ビデオ",
+  },
   description: "データ可視化特化型動画サブスクリプションサービス",
 };
 

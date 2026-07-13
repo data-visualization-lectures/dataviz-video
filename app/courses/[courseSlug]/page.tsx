@@ -2,6 +2,21 @@ import { createClient } from "@/lib/supabase/server";
 import LearningPathGraph from "@/components/LearningPathGraph";
 import { notFound } from "next/navigation";
 
+export async function generateMetadata({
+    params,
+}: {
+    params: Promise<{ courseSlug: string }>;
+}) {
+    const { courseSlug } = await params;
+    const supabase = await createClient();
+    const { data: course } = await supabase
+        .from("v_courses")
+        .select("title")
+        .eq("slug", courseSlug)
+        .maybeSingle();
+    return { title: course?.title ?? "コースが見つかりません" };
+}
+
 export default async function CoursePage({
     params,
 }: {
