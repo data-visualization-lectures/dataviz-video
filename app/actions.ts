@@ -2,7 +2,6 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
-import { revalidatePath } from "next/cache";
 
 export async function savePlaybackProgress(videoId: string, seconds: number, is_completed: boolean, total_duration?: number) {
     const supabase = await createClient();
@@ -13,6 +12,9 @@ export async function savePlaybackProgress(videoId: string, seconds: number, is_
     }
 
     // 1. Update Video Duration if provided (Self-correction of DB data)
+    // 呼び出し側（VideoPlayer）が「DB 値と実測が乖離した初回のみ」渡す契約。
+    // ここで revalidatePath を呼んではならない: 再生中は 5 秒ごとに本アクションが
+    // 実行されるため、layout 全体の再検証はサイト全体を継続的に再レンダリングさせる。
     // We use a Service Role client here because regular users don't have UPDATE permission on v_videos
     if (total_duration && total_duration > 0 && process.env.SUPABASE_SERVICE_ROLE_KEY) {
         const adminClient = createSupabaseClient(
@@ -28,9 +30,6 @@ export async function savePlaybackProgress(videoId: string, seconds: number, is_
         if (updateError) {
             console.error("Error updating video duration:", updateError);
             // Do not return, continue to save playback history
-        } else {
-            // Force revalidation so the UI shows the correct duration immediately
-            revalidatePath("/", "layout");
         }
     }
 
@@ -52,10 +51,7 @@ export async function savePlaybackProgress(videoId: string, seconds: number, is_
         return { error: error.message };
     }
 
-    // We might want to revalidate on completion too, to update the sidebar checkmark
-    if (is_completed) {
-        revalidatePath("/", "layout");
-    }
-
+    // 完了時のサイドバー更新はクライアント側の router.refresh()（VideoPlayer）が行う。
+    // サーバー側の revalidatePath はルーターキャッシュ全体を落とすためここでは使わない。
     return { success: true };
 }

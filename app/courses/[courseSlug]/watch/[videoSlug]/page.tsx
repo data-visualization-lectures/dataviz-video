@@ -4,6 +4,21 @@ import { notFound } from "next/navigation";
 import { generateStreamToken } from "@/lib/cloudflare/stream";
 import { getViewerEntitlement } from "@/lib/entitlement/server";
 
+export async function generateMetadata({
+    params,
+}: {
+    params: Promise<{ videoSlug: string }>;
+}) {
+    const { videoSlug } = await params;
+    const supabase = await createClient();
+    const { data: video } = await supabase
+        .from("v_videos")
+        .select("title")
+        .eq("slug", videoSlug)
+        .maybeSingle();
+    return { title: video?.title ?? "動画が見つかりません" };
+}
+
 export default async function WatchPage({
     params,
 }: {
@@ -29,12 +44,24 @@ export default async function WatchPage({
     const video = videoResult.data;
     if (!video || !courseResult.data) return notFound();
 
-    // コース内の並び（node id 昇順）から次の動画を決める
-    const { data: nodes } = await supabase
-        .from("v_course_nodes")
-        .select("id, video:v_videos (id, slug)")
-        .eq("course_id", courseResult.data.id)
-        .order("id", { ascending: true });
+    // Round 2: コース内の並びと視聴履歴を並列取得
+    const [nodesResult, historyResult] = await Promise.all([
+        supabase
+            .from("v_course_nodes")
+            .select("id, video:v_videos (id, slug)")
+            .eq("course_id", courseResult.data.id)
+            .order("id", { ascending: true }),
+        entitlement.userId
+            ? supabase
+                .from("v_playback_history")
+                .select("progress_seconds, is_completed")
+                .eq("user_id", entitlement.userId)
+                .eq("video_id", video.id)
+                .maybeSingle()
+            : Promise.resolve({ data: null }),
+    ]);
+    const nodes = nodesResult.data;
+    const currentHistory = historyResult.data;
 
     const orderedVideos = (nodes || [])
         .map((n: any) => (Array.isArray(n.video) ? n.video[0] : n.video))
@@ -47,17 +74,6 @@ export default async function WatchPage({
     const nextHref = nextVideo
         ? `/courses/${courseSlug}/watch/${nextVideo.slug}`
         : null;
-
-    let currentHistory = null;
-    if (entitlement.userId) {
-        const { data } = await supabase
-            .from("v_playback_history")
-            .select("progress_seconds, is_completed")
-            .eq("user_id", entitlement.userId)
-            .eq("video_id", video.id)
-            .maybeSingle();
-        currentHistory = data;
-    }
 
     const signedToken = entitlement.canWatch
         ? await generateStreamToken(video.cloudflare_uid)

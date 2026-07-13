@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { savePlaybackProgress } from "@/app/actions";
 import { Stream } from "@cloudflare/stream-react";
 import Link from "next/link";
@@ -37,12 +38,14 @@ export default function VideoPlayer({
     canWatch: boolean;
     isAuthenticated: boolean;
 }) {
+    const router = useRouter();
     const videoRef = useRef<HTMLVideoElement>(null);
     const streamRef = useRef<any>(null);
     const [progress, setProgress] = useState(initialHistory?.progress_seconds || 0);
     const [isEnded, setIsEnded] = useState(false); // Track ended state
     const [isReady, setIsReady] = useState(false); // Track if player is ready to seek
     const hasTrackedPlay = useRef(false);
+    const hasSyncedDuration = useRef(false);
     const hasTrackedComplete = useRef(false);
     const [loginHref, setLoginHref] = useState(LOGIN_URL);
 
@@ -55,22 +58,6 @@ export default function VideoPlayer({
     // Hybrid Logic: Check if it's a real Cloudflare UID or a dummy one
     // Dummy UIDs in seed_data start with "uid_"
     const isCloudflareVideo = !video.cloudflare_uid.startsWith("uid_");
-
-    // Determine sample video based on video ID to show variety
-    const getSampleVideo = (id: string) => {
-        // Using highly reliable Google sample videos
-        const samples = [
-            "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-            "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-            "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
-            "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4"
-        ];
-        // Simple hash to pick a video
-        const index = id.charCodeAt(0) % samples.length;
-        return samples[index];
-    };
-
-    const sampleVideoUrl = getSampleVideo(video.id);
 
     useEffect(() => {
         // Set initial time if history exists AND player is ready
@@ -97,18 +84,25 @@ export default function VideoPlayer({
     }, [initialHistory, isCloudflareVideo, isReady]);
 
     const saveProgress = async (seconds: number, completed: boolean = false) => {
-        // Use Server Action to save progress
-        // Get actual duration from the active player
-        const currentDuration = isCloudflareVideo
+        // duration の自己修復は「DB 値と 2 秒超乖離しているときに 1 回だけ」送る。
+        // 毎回送るとサーバー側で不要な UPDATE が 5 秒ごとに走る。
+        const actualDuration = isCloudflareVideo
             ? streamRef.current?.duration
             : videoRef.current?.duration;
+        let durationToSync = 0;
+        if (
+            !hasSyncedDuration.current &&
+            actualDuration && actualDuration > 0 &&
+            Math.abs(actualDuration - (video.duration || 0)) > 2
+        ) {
+            hasSyncedDuration.current = true;
+            durationToSync = actualDuration;
+        }
 
-        const result = await savePlaybackProgress(video.id, seconds, completed, currentDuration || 0);
+        const result = await savePlaybackProgress(video.id, seconds, completed, durationToSync);
 
         if (result.error) {
             console.error("Error saving progress:", result.error);
-        } else {
-            console.log("Progress saved via Server Action");
         }
     };
 
@@ -158,9 +152,11 @@ export default function VideoPlayer({
             ? streamRef.current?.duration || video.duration
             : videoRef.current?.duration || 0;
 
-        saveProgress(duration, true);
+        saveProgress(duration, true).then(() => {
+            // サイドバーの完了チェックを更新（1 回だけ、明示的に）
+            router.refresh();
+        });
         setIsEnded(true);
-        // alert("Video Completed!"); // Removed annoying alert
     };
 
     const [error, setError] = useState<string | null>(null);
@@ -211,6 +207,16 @@ export default function VideoPlayer({
         );
     }
 
+    if (!isCloudflareVideo) {
+        // seed の仮動画（cloudflare_uid が "uid_" 始まり）: 配信素材が未登録
+        return (
+            <div className="relative w-full aspect-video bg-muted rounded-lg flex flex-col items-center justify-center text-center p-8 space-y-3 border">
+                <p className="text-lg font-semibold">この動画は準備中です</p>
+                <p className="text-sm text-muted-foreground">公開までしばらくお待ちください。</p>
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-4">
             {error && (
@@ -220,8 +226,7 @@ export default function VideoPlayer({
                 </div>
             )}
             <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden shadow-lg group">
-                {isCloudflareVideo ? (
-                    <Stream
+                <Stream
                         controls
                         responsive
                         src={signedToken || video.cloudflare_uid}
@@ -233,20 +238,6 @@ export default function VideoPlayer({
                         onLoadedData={() => setIsReady(true)} // Cloudflare Stream often supports this
                         className="w-full h-full"
                     />
-                ) : (
-                    <video
-                        ref={videoRef}
-                        src={sampleVideoUrl}
-                        controls
-                        className="w-full h-full"
-                        poster={`https://placehold.co/600x400?text=${encodeURIComponent(video.title)}`}
-                        onPlay={handlePlay}
-                        onTimeUpdate={() => handleTimeUpdate()}
-                        onEnded={handleEnded}
-                        onError={handleError}
-                        onLoadedMetadata={() => setIsReady(true)} // HTML5 
-                    />
-                )}
 
                 {/* Next Video Overlay on End */}
                 {isEnded && (
