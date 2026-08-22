@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import ViewModeNav from "@/components/ViewModeNav";
 
 export default function SiteHeader() {
     return (
         <header className="fixed top-0 left-0 right-0 z-40 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-sm border-b border-gray-200 dark:border-zinc-800 h-16 flex items-center justify-between px-4 md:px-8 mt-12 md:mt-12 transition-all">
-            {/* Note: mt-12 is roughly to account for the Global Header which is usually fixed at top. 
-                If Global Header is 48px, mt-12 (48px) pushes this down. 
-                Adjust based on actual Global Header height if needed. 
+            {/* Note: mt-12 is roughly to account for the Global Header which is usually fixed at top.
+                If Global Header is 48px, mt-12 (48px) pushes this down.
+                Adjust based on actual Global Header height if needed.
             */}
 
             <div className="flex items-center gap-4">
@@ -15,16 +15,7 @@ export default function SiteHeader() {
                 </Link>
             </div>
 
-            <nav>
-                <Link
-                    href="/"
-                    className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition-colors"
-                >
-                    <ArrowLeft className="w-4 h-4" />
-                    <span className="hidden sm:inline">コース一覧へ戻る</span>
-                    <span className="sm:hidden">コース一覧</span>
-                </Link>
-            </nav>
+            <ViewModeNav />
         </header>
     );
 }

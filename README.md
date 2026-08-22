@@ -20,6 +20,7 @@ npm run dev
 ```
 
 - http://localhost:3000/?auth_debug
+- http://localhost:3000/map?auth_debug
 - http://localhost:3000/courses/openrefine/watch/openrefine-2-basics?auth_debug
 
 `?auth_debug` は共通認証スクリプトの未ログインリダイレクトを抑止するデバッグパラメータ（URL にのみ付ける。env や設定値に入れない）。

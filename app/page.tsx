@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { BookOpen, ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
+import ViewModeNav from "@/components/ViewModeNav";
 import {
   Card,
   CardContent,
@@ -47,9 +48,12 @@ export default async function Home() {
   return (
     <div className="p-8 pt-32 max-w-7xl mx-auto">
       <section className="mb-16">
-        <h1 className="text-3xl font-bold mb-2">学習コース</h1>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between mb-2">
+          <h1 className="text-3xl font-bold">学習コース</h1>
+          <ViewModeNav />
+        </div>
         <p className="text-muted-foreground mb-8 border-b pb-6">
-          コースを選んで、動画で順に学べます。視聴の進み具合は自動で記録されます。
+          コースを選んで、動画で順に学べます。視聴の進み具合は自動で記録されます。知識のつながりは知識マップでも見られます。
         </p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {coursesWithLink.map((course) => (
