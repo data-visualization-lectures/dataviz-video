@@ -58,6 +58,31 @@
 
 ---
 
+## 3.1 知識マップ（全コース横断）
+
+コース一覧と並立するモード。正準 URL は `/map`。データは `GET /api/knowledge-graph`。
+
+- ノードは既存の `v_course_nodes`（動画1本＝1ノード）。知識トピック層は持たない。
+- エッジは既存の `v_node_edges`。コースをまたぐ先行関係も、別コースの node id 同士を結べば表現できる（スキーマ追加は不要）。
+- コース詳細の `LearningPathGraph` はコース内ビューとして残す。
+
+### ステータス判定
+
+`lib/knowledge-graph.ts` の `assignKnowledgeNodeStatuses` が正本。ロックは返さない。
+
+1. **completed（完了）**: `is_completed = true`
+2. **in_progress（視聴中）**: 未完了かつ `progress_seconds > 0`
+3. **next（次に学ぶ）**: 未視聴で、グラフ上に存在する先行ノードがすべて completed。先行なしのルートも含む。
+4. **later（その先）**: 上記以外の未視聴
+
+未ログイン時は履歴なしとして扱い、ルートがすべて `next` になる。
+
+### コース間エッジの足し方
+
+`v_node_edges` に `source_node_id` / `target_node_id` を INSERT する。両端はそれぞれ `v_course_nodes.id` であり、所属 `course_id` が違っていてよい。教育上の先行関係はコンテンツ側で決める（アプリは結線を自動生成しない）。
+
+---
+
 ## 4. デプロイメント要件 (Vercel)
 
 本番環境 (Vercel) で動作させるためには、以下の環境変数が必須です。設定漏れがあると 500 Error でクラッシュします。
@@ -78,6 +103,7 @@
 ## 5. URL 構造（2026-07-12 確定）
 
 - 正準 URL は `/courses/[courseSlug]/watch/[videoSlug]`（例: `/courses/openrefine/watch/openrefine-2-basics`）。
+- 知識マップは `/map`。ノードクリックで上記の視聴 URL へ遷移する。
 - `slug` 列は `v_courses`（UNIQUE NOT NULL）と `v_videos`（UNIQUE NOT NULL）に持つ。移行 SQL は `_documents/migrations/2026-07-12_add_slugs.sql`。
 - サイドバーはコース layout（`app/courses/[courseSlug]/layout.tsx`）に分離されており、動画切り替え時は動画部分だけが再レンダリングされる。
 - 視聴権限（/api/me）はアクセストークン単位で 2 分キャッシュされる（`lib/entitlement/server.ts`）。
